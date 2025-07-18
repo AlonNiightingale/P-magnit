@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расчёт П-образного электромагнита</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+        .input-section, .output-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        .results {
+            background: #e8f4fc;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #bdc3c7;
+        }
+        .result-value {
+            font-weight: 700;
+            color: #e74c3c;
+        }
+        .chart-container {
+            margin-top: 30px;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Расчёт П-образного электромагнита с поворотным якорем</h1>
+    
+    <div class="container">
+        <div class="input-section">
+            <h2>Параметры системы</h2>
+            <div class="input-group">
+                <label for="delta0">Технологический зазор δ₀ (мм)</label>
+                <input type="number" id="delta0" value="0.1" step="0.01">
+            </div>
+            <div class="input-group">
+                <label for="L_arm">Плечо рычага L (мм)</label>
+                <input type="number" id="L_arm" value="20" step="1">
+            </div>
+            <div class="input-group">
+                <label for="S_eff">Эффективная площадь полюса S (мм²)</label>
+                <input type="number" id="S_eff" value="100" step="1">
+            </div>
+            <div class="input-group">
+                <label for="N">Число витков катушки N</label>
+                <input type="number" id="N" value="500" step="10">
+            </div>
+            <div class="input-group">
+                <label for="alpha_start">Начальный угол α₀ (градусы)</label>
+                <input type="number" id="alpha_start" value="5" step="0.5">
+            </div>
+            
+            <h2>Параметры пружины</h2>
+            <div class="input-group">
+                <label for="F_spring_end">Конечное усилие F (Н)</label>
+                <input type="number" id="F_spring_end" value="10" step="0.5">
+            </div>
+            <div class="input-group">
+                <label for="L_spring_end">Плечо приложения усилия пружины (мм)</label>
+                <input type="number" id="L_spring_end" value="15" step="1">
+            </div>
+            <div class="input-group">
+                <label for="k_spring_angular">Жёсткость пружины k (Н·мм/град)</label>
+                <input type="number" id="k_spring_angular" value="0.1" step="0.01">
+            </div>
+            
+            <button onclick="calculate()">Рассчитать</button>
+        </div>
+        
+        <div class="output-section">
+            <h2>Результаты расчёта</h2>
+            <div class="results">
+                <div class="result-item">
+                    <span>Пороговый ток срабатывания:</span>
+                    <span id="I_threshold" class="result-value">0.00 А</span>
+                </div>
+                <div class="result-item">
+                    <span>Начальный момент пружины:</span>
+                    <span id="M0" class="result-value">0.00 Н·мм</span>
+                </div>
+                <div class="result-item">
+                    <span>Магнитная сила при срабатывании:</span>
+                    <span id="F_mag" class="result-value">0.00 Н</span>
+                </div>
+                <div class="result-item">
+                    <span>Магнитная индукция в зазоре:</span>
+                    <span id="B_gap" class="result-value">0.00 Тл</span>
+                </div>
+                <div class="result-item">
+                    <span>Магнитный поток:</span>
+                    <span id="Phi" class="result-value">0.00 мВб</span>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="momentChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Константы
+        const μ0 = 4 * Math.PI * 1e-7; // Магнитная постоянная (Гн/м)
+        let myChart = null;
+
+        function calculate() {
+            // Считываем входные параметры и преобразуем в СИ
+            const delta0 = parseFloat(document.getElementById('delta0').value) / 1000; // м
+            const L_arm = parseFloat(document.getElementById('L_arm').value) / 1000; // м
+            const S_eff = parseFloat(document.getElementById('S_eff').value) / 1e6; // м²
+            const N = parseFloat(document.getElementById('N').value);
+            const alpha_start_deg = parseFloat(document.getElementById('alpha_start').value);
+            const F_spring_end = parseFloat(document.getElementById('F_spring_end').value);
+            const L_spring_end = parseFloat(document.getElementById('L_spring_end').value) / 1000; // м
+            const k_spring_angular = parseFloat(document.getElementById('k_spring_angular').value) * (Math.PI/180); // Н·м/рад
+            
+            // Переводим угол в радианы
+            const alpha_start_rad = alpha_start_deg * Math.PI / 180;
+            
+            // Вычисляем начальный момент пружины M0
+            const M0 = F_spring_end * L_spring_end + k_spring_angular * alpha_start_rad;
+            
+            // Вычисляем пороговый ток срабатывания
+            const delta_start = delta0 + L_arm * Math.sin(alpha_start_rad);
+            const numerator = 4 * M0 * Math.pow(delta_start, 2);
+            const denominator = μ0 * Math.pow(N, 2) * S_eff * L_arm;
+            const I_threshold = Math.sqrt(numerator / denominator);
+            
+            // Вычисляем магнитную индукцию и силу
+            const B_gap = (μ0 * N * I_threshold) / (2 * delta_start);
+            const F_mag = Math.pow(B_gap, 2) * S_eff / (2 * μ0);
+            const Phi = B_gap * S_eff;
+            
+            // Выводим результаты
+            document.getElementById('I_threshold').textContent = I_threshold.toFixed(3) + ' А';
+            document.getElementById('M0').textContent = (M0 * 1000).toFixed(2) + ' Н·мм';
+            document.getElementById('F_mag').textContent = F_mag.toFixed(2) + ' Н';
+            document.getElementById('B_gap').textContent = B_gap.toFixed(3) + ' Тл';
+            document.getElementById('Phi').textContent = (Phi * 1000).toFixed(3) + ' мВб';
+            
+            // Строим графики
+            buildMomentChart(alpha_start_rad, M0, k_spring_angular, I_threshold, delta0, L_arm, μ0, N, S_eff);
+        }
+        
+        function buildMomentChart(alpha_start_rad, M0, k_spring_angular, I_threshold, delta0, L_arm, μ0, N, S_eff) {
+            // Подготовка данных
+            const angles = [];
+            const M_spring = [];
+            const M_mag = [];
+            
+            const steps = 20;
+            const angle_step = alpha_start_rad / steps;
+            
+            for (let i = 0; i <= steps; i++) {
+                const alpha = i * angle_step;
+                const angle_deg = alpha * 180 / Math.PI;
+                angles.push(angle_deg.toFixed(1));
+                
+                // Момент пружины
+                M_spring.push((M0 - k_spring_angular * (alpha_start_rad - alpha)) * 1000); // в Н·мм
+                
+                // Магнитный момент
+                const delta = delta0 + L_arm * Math.sin(alpha);
+                const M_mag_val = (μ0 * Math.pow(N, 2) * Math.pow(I_threshold, 2) * S_eff * L_arm) / 
+                                  (4 * Math.pow(delta, 2)) * 1000; // в Н·мм
+                M_mag.push(M_mag_val);
+            }
+            
+            // Создаем или обновляем график
+            const ctx = document.getElementById('momentChart').getContext('2d');
+            
+            if (myChart) {
+                myChart.destroy();
+            }
+            
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: angles,
+                    datasets: [
+                        {
+                            label: 'Момент пружины',
+                            data: M_spring,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Магнитный момент',
+                            data: M_mag,
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            borderWidth: 3,
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Момент (Н·мм)'
+                            },
+                            beginAtZero: true
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Угол поворота якоря (°)'
+                            },
+                            reverse: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} Н·мм`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Инициализация при загрузке
+        window.onload = calculate;
+    </script>
+</body>
+</html>
