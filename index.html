@@ -3,367 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Расчёт электромагнитов</title>
+    <title>Калькулятор ЭМ расцепителя</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="scr/magnit.png">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjs@9.4.4/lib/browser/math.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Расчёт электромагнитных систем</h1>
-            <p>инструмент дилетантский для проектирования электромагнитов</p>
-        </header>
-        
-        <div class="tabs">
-            <button class="tab-btn active" onclick="openTab('tab1')">Клапанный (поворотный)</button>
-            <button class="tab-btn" onclick="openTab('tab2')">Клапанный (прямой ход)</button>
-        </div>
-        
-        <!-- Вкладка 1: П-образный электромагнит -->
-        <div id="tab1" class="tab-content active">
-            <div class="content-grid">
-                <div class="input-section">
-                    <h2>Параметры магнитной системы</h2>
-                    
+    <header class="app-header">
+        <h1>Анализ электромагнитного расцепителя</h1>
+        <button id="theme-switcher" class="theme-switcher">🌙</button>
+    </header>
+
+    <main class="container">
+        <div class="main-layout">
+            <div id="inputs-container" class="section">
+                <h2>Параметры модели</h2>
+
+                <fieldset>
+                    <legend>⚙️ Параметры электромагнита</legend>
                     <div class="input-group">
-                        <label for="delta0" title="Минимальное расстояние между якорем и полюсом в исходном положении">
-                            Начальный зазор δ₀, мм
-                        </label>
-                        <input type="number" id="delta0" value="0.1" step="0.01" min="0.01">
+                        <label for="turns">Количество витков (N), шт.</label>
+                        <input name="turns" type="number" id="turns" value="1" min="1">
                     </div>
-                    
                     <div class="input-group">
-                        <label for="L_arm" title="Расстояние от оси вращения до точки приложения магнитной силы">
-                            Плечо рычага L, мм
-                        </label>
-                        <input type="number" id="L_arm" value="20" step="1" min="1">
+                        <label for="poleArea">Площадь полюса (A), мм²</label>
+                        <input name="poleArea" type="number" id="poleArea" value="100" min="1">
                     </div>
-                    
                     <div class="input-group">
-                        <label for="S_eff" title="Эффективная площадь магнитного полюса">
-                            Площадь полюса S, мм²
-                        </label>
-                        <input type="number" id="S_eff" value="100" step="1" min="1">
+                        <label for="coreLength">Длина сердечника (Lc), мм</label>
+                        <input name="coreLength" type="number" id="coreLength" value="50" min="1">
                     </div>
-                    
                     <div class="input-group">
-                        <label for="N" title="Количество витков обмотки">
-                            Число витков N
-                        </label>
-                        <input type="number" id="N" value="500" step="10" min="10">
+                        <label for="corePermeability">Проницаемость сердечника (μr)</label>
+                        <input name="corePermeability" type="number" id="corePermeability" value="2000" min="100">
                     </div>
-                    
+                </fieldset>
+
+                <fieldset>
+                    <legend>⚡ Электрические параметры</legend>
                     <div class="input-group">
-                        <label for="alpha_start" title="Угол между якорем и магнитной системой в исходном положении">
-                            Начальный угол α₀, °
-                        </label>
-                        <input type="number" id="alpha_start" value="5" step="0.5" min="1">
+                        <label for="current">Расчетный ток (I), А <span class="value-display" id="currentValue">2500 А</span></label>
+                        <input name="current" type="range" id="current" min="100" max="10000" step="50" value="2500">
                     </div>
-                    
+                </fieldset>
+
+                <fieldset>
+                    <legend>🔬 Параметры пружины и зазора</legend>
                     <div class="input-group">
-                        <label for="I_threshold_input" title="Ток, при котором происходит срабатывание">
-                            Пороговый ток I, А
-                        </label>
-                        <input type="number" id="I_threshold_input" value="0.5" step="0.1" min="0.1">
+                        <label for="maxAirGap">Воздушный зазор (g), мм <span class="value-display" id="maxAirGapValue">5 мм</span></label>
+                        <input name="maxAirGap" type="range" id="maxAirGap" min="0.1" max="10" step="0.1" value="5">
                     </div>
-                    
-                    <h2>Параметры противодействующего элемента</h2>
-                    
                     <div class="input-group">
-                        <label for="spring_type" title="Тип механического противодействия">
-                            Тип противодействия:
-                        </label>
-                        <select id="spring_type">
-                            <option value="rotational">Крутящая пружина</option>
-                            <option value="linear">Линейная пружина</option>
-                            <option value="none">Без противодействия</option>
-                        </select>
+                        <label for="initialSpringForce">Начальное усилие пружины (F), Н</label>
+                        <input name="initialSpringForce" type="number" id="initialSpringForce" value="10" min="0" step="0.5">
                     </div>
-                    
-                    <div class="spring-params" id="rotational_params">
-                        <div class="input-group">
-                            <label for="F_spring_end" title="Усилие пружины в конечном положении">
-                                Конечное усилие F, Н
-                            </label>
-                            <input type="number" id="F_spring_end" value="10" step="0.5" min="0.1">
-                        </div>
-                        
-                        <div class="input-group">
-                            <label for="L_spring_end" title="Расстояние от оси до точки приложения силы пружины">
-                                Плечо приложения, мм
-                            </label>
-                            <input type="number" id="L_spring_end" value="15" step="1" min="1">
-                        </div>
-                        
-                        <div class="input-group">
-                            <label for="k_spring_angular" title="Угловая жесткость пружины">
-                                Жёсткость k, Н·мм/град
-                            </label>
-                            <input type="number" id="k_spring_angular" value="0.1" step="0.01" min="0.01">
-                        </div>
+                    <div class="input-group">
+                        <label for="springStiffness">Жесткость пружины (k), Н/мм</label>
+                        <input name="springStiffness" type="number" id="springStiffness" value="8" min="0" step="0.1">
                     </div>
-                    
-                    <div class="spring-params" id="linear_params" style="display:none">
-                        <div class="input-group">
-                            <label for="linear_spring_force" title="Усилие пружины в конечном положении">
-                                Конечное усилие F, Н
-                            </label>
-                            <input type="number" id="linear_spring_force" value="8" step="0.5" min="0.1">
-                        </div>
-                        
-                        <div class="input-group">
-                            <label for="linear_spring_rate" title="Линейная жесткость пружины">
-                                Жёсткость k, Н/мм
-                            </label>
-                            <input type="number" id="linear_spring_rate" value="0.5" step="0.05" min="0.01">
-                        </div>
-                        
-                        <div class="input-group">
-                            <label for="spring_attach_point" title="Расстояние от оси до точки крепления пружины">
-                                Плечо приложения, мм
-                            </label>
-                            <input type="number" id="spring_attach_point" value="12" step="1" min="1">
-                        </div>
-                    </div>
-                    
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="showSpringChart" checked>
-                        <label for="showSpringChart">Показать график противодействия</label>
-                    </div>
-                    
-                    <button onclick="calculateP()">Рассчитать</button>
+                </fieldset>
+            </div>
+
+            <div class="section">
+                <h2>Анализ срабатывания</h2>
+                <div id="force-gap-chart-container">
+                    <canvas id="force-gap-chart"></canvas>
                 </div>
-                
-                <div class="output-section">
-                    <h2>Результаты расчёта</h2>
-                    <div class="results">
-                        <div class="result-item">
-                            <span>МДС (I·N):</span>
-                            <span id="mmf" class="result-value">0.00 А·вит</span>
-                        </div>
-                        <div class="result-item">
-                            <span>Магнитная сила:</span>
-                            <span id="F_mag" class="result-value">0.00 Н</span>
-                        </div>
-                        <div class="result-item">
-                            <span>Магнитная индукция:</span>
-                            <span id="B_gap" class="result-value">0.00 Тл</span>
-                        </div>
-                        <div class="result-item">
-                            <span>Момент при срабатывании:</span>
-                            <span id="M_mag" class="result-value">0.00 Н·мм</span>
-                        </div>
-                        <div class="result-item">
-                            <span>Противодействующий момент:</span>
-                            <span id="M_spring" class="result-value">0.00 Н·мм</span>
-                        </div>
-                        <div class="result-item">
-                            <span>Коэффициент запаса:</span>
-                            <span id="safety_factor" class="result-value">0.00</span>
-                        </div>
+               
+                <div id="results-summary" class="results-summary">
+                    <div class="result-item">
+                        <strong>Расчетная точка срабатывания:</strong>
+                        <span id="trip-point-result">Нет</span>
                     </div>
-                    
-                    <div class="chart-container">
-                        <canvas id="momentChart"></canvas>
-                    </div>
-                    
-                    <div class="time-section">
-                        <div class="time-params">
-                            <h2>Динамические характеристики</h2>
-                            <div class="input-group">
-                                <label for="moment_inertia" title="Момент инерции якоря относительно оси вращения">
-                                    Момент инерции J, кг·мм²
-                                </label>
-                                <input type="number" id="moment_inertia" value="0.5" step="0.1" min="0.01">
-                            </div>
-                            <div class="input-group">
-                                <label for="voltage" title="Напряжение питания системы">
-                                    Напряжение U, В
-                                </label>
-                                <input type="number" id="voltage" value="24" step="1" min="1">
-                            </div>
-                            <div class="input-group">
-                                <label for="wire_diameter" title="Диаметр провода обмотки">
-                                    Диаметр провода d, мм
-                                </label>
-                                <input type="number" id="wire_diameter" value="0.5" step="0.05" min="0.1">
-                            </div>
-                        </div>
-                        <div class="time-result">
-                            <div class="result-item">
-                                <span>Время срабатывания:</span>
-                            </div>
-                            <div class="time-value" id="response_time">0.00 мс</div>
-                            <div class="result-item">
-                                <span>Угловое ускорение:</span>
-                                <span id="angular_accel" class="result-value">0.00 рад/с²</span>
-                            </div>
-                        </div>
+                    <div class="result-item">
+                        <strong>Прогноз:</strong>
+                        <span id="final-decision">...</span>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Вкладка 2: Клапанный электромагнит -->
-        <div id="tab2" class="tab-content">
-            <div class="content-grid">
-                <div class="input-section">
-                    <h2>Параметры магнитной системы</h2>
-                    
-                    <div class="input-group">
-                        <label for="valve_gap" title="Расстояние между якорем и полюсом в исходном положении">
-                            Начальный зазор δ, мм
-                        </label>
-                        <input type="number" id="valve_gap" value="2" step="0.1" min="0.1">
-                    </div>
-                    
-                    <div class="input-group">
-                        <label for="valve_area" title="Эффективная площадь магнитного полюса">
-                            Площадь полюса S, мм²
-                        </label>
-                        <input type="number" id="valve_area" value="150" step="1" min="1">
-                    </div>
-                    
-                    <div class="input-group">
-                        <label for="valve_current" title="Ток в проводнике (1 виток = шина)">
-                            Ток I, А
-                        </label>
-                        <input type="number" id="valve_current" value="800" step="10" min="10">
-                    </div>
-                    
-                    <div class="input-group">
-                        <label for="valve_mass" title="Масса подвижного якоря">
-                            Масса якоря m, г
-                        </label>
-                        <input type="number" id="valve_mass" value="50" step="5" min="1">
-                    </div>
-                    
-                    <h2>Параметры противодействующего элемента</h2>
-                    
-                    <div class="input-group">
-                        <label for="valve_spring_type" title="Тип механического противодействия">
-                            Тип противодействия:
-                        </label>
-                        <select id="valve_spring_type">
-                            <option value="linear">Линейная пружина</option>
-                            <option value="none">Без противодействия</option>
-                        </select>
-                    </div>
-                    
-                    <div class="spring-params" id="valve_linear_params">
-                        <div class="input-group">
-                            <label for="valve_spring_force" title="Усилие пружины в исходном положении">
-                                Начальное усилие F₀, Н
-                            </label>
-                            <input type="number" id="valve_spring_force" value="15" step="0.5" min="0.1">
-                        </div>
-                        
-                        <div class="input-group">
-                            <label for="valve_spring_rate" title="Линейная жесткость пружины">
-                                Жёсткость k, Н/мм
-                            </label>
-                            <input type="number" id="valve_spring_rate" value="2" step="0.1" min="0.1">
-                        </div>
-                    </div>
-                    
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="showValveSpring" checked>
-                        <label for="showValveSpring">Показать график противодействия</label>
-                    </div>
-                    
-                    <button onclick="calculateValve()">Рассчитать</button>
-                </div>
-                
-                <div class="output-section">
-                    <h2>Результаты расчёта</h2>
-                    <div class="results">
-                        <div class="result-item">
-                            <span>МДС (I·N):</span>
-                            <span id="valve_mmf" class="result-value">0.00 А·вит</span>
-                        </div>
-                        <div class="result-item">
-                            <span>Магнитная сила:</span>
-                            <span id="valve_force" class="result-value">0.00 Н</span>
-                        </div>
-                        <div class="result-item">
-                            <span>Магнитная индукция:</span>
-                            <span id="valve_B" class="result_value">0.00 Тл</span>
-                        </div>
-                        <div class="result-item">
-                            <span>Противодействующая сила:</span>
-                            <span id="valve_spring" class="result_value">0.00 Н</span>
-                        </div>
-                        <div class="result-item">
-                            <span>Ускорение якоря:</span>
-                            <span id="valve_accel" class="result_value">0.00 м/с²</span>
-                        </div>
-                        <div class="result-item">
-                            <span>Коэффициент запаса:</span>
-                            <span id="valve_safety" class="result_value">0.00</span>
-                        </div>
-                    </div>
-                    
-                    <div class="chart-container">
-                        <canvas id="valveChart"></canvas>
-                    </div>
-                    
-                    <div class="time-section">
-                        <div class="time-params">
-                            <h2>Динамические характеристики</h2>
-                            <div class="input-group">
-                                <label for="valve_voltage" title="Напряжение питания системы (при наличии управления)">
-                                    Напряжение U, В
-                                </label>
-                                <input type="number" id="valve_voltage" value="24" step="1" min="1">
-                            </div>
-                            
-                            <div class="input-group">
-                                <label for="valve_resistance" title="Сопротивление токовой цепи (шины + контакты)">
-                                    Сопротивление R, мОм
-                                </label>
-                                <input type="number" id="valve_resistance" value="0.5" step="0.1" min="0.1">
-                            </div>
-                            
-                            <div class="input-group">
-                                <label for="valve_stroke" title="Полный ход якоря до контакта с полюсом">
-                                    Ход якоря, мм
-                                </label>
-                                <input type="number" id="valve_stroke" value="1.5" step="0.1" min="0.1">
-                            </div>
-                        </div>
-                        
-                        <div class="time-result">
-                            <div class="result-item">
-                                <span>Время срабатывания:</span>
-                            </div>
-                            <div class="time-value" id="valve_time">0.00 мс</div>
-                            <div class="result-item">
-                                <span>Скорость удара:</span>
-                                <span id="impact_velocity" class="result-value">0.00 м/с</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="note">
-                        <strong>Конструктивные особенности:</strong> 
-                        <ul>
-                            <li>Число витков N = 1 (медная шина)</li>
-                            <li>Якорь перемещается параллельно полюсам</li>
-                            <li>Сила притяжения F = (B²·S) / (2μ₀)</li>
-                            <li>Индукция B = (μ₀·I) / (2δ) для двух зазоров</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <footer>
-            <p>Электромагнитный калькулятор v3.1 | Для критических применений требуется верификация</p>
-        </footer>
-    </div>
-    
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
