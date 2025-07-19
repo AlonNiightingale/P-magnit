@@ -176,3 +176,46 @@ legend {
         margin-left: 0;
     }
 }
+/* Улучшения для тёмной темы */
+body.dark-theme .result-item,
+body.dark-theme .input-group label,
+body.dark-theme .result-item strong {
+    color: #ffffff !important;
+}
+
+/* Жёлтый цвет для линии электромагнита */
+.chartjs-render-monitor {
+    --electromagnet-color: #0d6efd;
+    --spring-color: #dc3545;
+}
+
+body.dark-theme .chartjs-render-monitor {
+    --electromagnet-color: #ffcc00;
+    --spring-color: #ff6b6b;
+}
+/* Явное указание цветов для графика */
+.chartjs-render-monitor .chart-legend,
+.chartjs-render-monitor .chart-title,
+.chartjs-render-monitor .chart-axis {
+    color: var(--text-primary) !important;
+}
+
+/* Жёлтый для линии электромагнита в тёмной теме */
+body.dark-theme .chartjs-render-monitor .electromagnet-line {
+    stroke: #ffcc00 !important;
+}
+
+/* Синий для линии электромагнита в светлой теме */
+body:not(.dark-theme) .chartjs-render-monitor .electromagnet-line {
+    stroke: #0d6efd !important;
+}
+
+/* Красный для линии пружины */
+.chartjs-render-monitor .spring-line {
+    stroke: #dc3545 !important;
+}
+
+/* Белый текст в тёмной теме для элементов графика */
+body.dark-theme .chartjs-render-monitor text {
+    fill: #ffffff !important;
+}

@@ -10,8 +10,9 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         CHART_CONFIG: {
             GRAPH_POINTS: 100,
-            MAX_FORCE: 1000 // Максимальное усилие для отображения
-        }
+            MAX_FORCE: 1000
+        },
+        STORAGE_KEY: 'em_calculator_state'
     };
 
     // Получение элементов DOM
@@ -39,101 +40,103 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // Инициализация графика
-    const chart = new Chart(dom.chartCanvas, {
-        type: 'line',
-        data: {
-            datasets: [
-                {
-                    label: 'Электромагнитное усилие',
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                    tension: 0.2,
-                    fill: false,
-                    data: []
-                },
-                {
-                    label: 'Усилие пружины',
-                    borderColor: '#dc3545',
-                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                    tension: 0.2,
-                    fill: false,
-                    data: []
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    type: 'linear',
-                    position: 'bottom',
-                    title: {
-                        display: true,
-                        text: 'Воздушный зазор (мм)',
-                        color: 'var(--text-secondary)'
+    let chart;
+    function initChart() {
+        // Удаляем старый график, если он существует
+        if (chart) {
+            chart.destroy();
+        }
+        
+        const ctx = dom.chartCanvas.getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [
+                    {
+                        label: 'Электромагнитное усилие',
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        tension: 0.2,
+                        fill: false,
+                        data: [],
+                        className: 'electromagnet-line'
                     },
-                    reverse: true, // Разворот оси X - зазор уменьшается слева направо
-                    min: 0,
-                    ticks: {
-                        color: 'var(--text-secondary)',
-                        stepSize: 1
-                    },
-                    grid: {
-                        color: 'var(--border-color)'
+                    {
+                        label: 'Усилие пружины',
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        tension: 0.2,
+                        fill: false,
+                        data: [],
+                        className: 'spring-line'
                     }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Усилие (Н)',
-                        color: 'var(--text-secondary)'
-                    },
-                    min: 0,
-                    max: CONFIG.CHART_CONFIG.MAX_FORCE,
-                    ticks: {
-                        color: 'var(--text-secondary)',
-                        stepSize: 100
-                    },
-                    grid: {
-                        color: 'var(--border-color)'
-                    }
-                }
+                ]
             },
-            plugins: {
-                legend: {
-                    labels: {
-                        color: 'var(--text-primary)',
-                        font: {
-                            size: 14
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: {
+                            display: true,
+                            text: 'Воздушный зазор (мм)',
+                            color: 'var(--text-secondary)'
+                        },
+                        reverse: true,
+                        min: 0,
+                        ticks: {
+                            color: 'var(--text-secondary)',
+                            stepSize: 1
+                        },
+                        grid: {
+                            color: 'var(--border-color)'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Усилие (Н)',
+                            color: 'var(--text-secondary)'
+                        },
+                        min: 0,
+                        max: CONFIG.CHART_CONFIG.MAX_FORCE,
+                        ticks: {
+                            color: 'var(--text-secondary)',
+                            stepSize: 100
+                        },
+                        grid: {
+                            color: 'var(--border-color)'
                         }
                     }
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.dataset.label}: ${context.parsed.y.toFixed(1)} Н @ ${context.parsed.x.toFixed(2)} мм`;
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: 'var(--text-primary)',
+                            font: {
+                                size: 14
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y.toFixed(1)} Н @ ${context.parsed.x.toFixed(2)} мм`;
+                            }
                         }
                     }
                 }
             }
-        }
-    });
+        });
+    }
 
     // Инициализация темы
     function initTheme() {
         const savedTheme = localStorage.getItem('theme') || 'light';
         document.body.classList.toggle('dark-theme', savedTheme === 'dark');
         dom.themeSwitcher.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
-        updateChartColors();
-    }
-
-    // Обновление цветов графика для текущей темы
-    function updateChartColors() {
-        const isDark = document.body.classList.contains('dark-theme');
-        chart.data.datasets[0].borderColor = isDark ? '#4dabf7' : '#0d6efd';
-        chart.data.datasets[1].borderColor = isDark ? '#ff6b6b' : '#dc3545';
-        chart.update();
     }
 
     // Переключение темы
@@ -141,10 +144,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const isDark = document.body.classList.toggle('dark-theme');
         dom.themeSwitcher.textContent = isDark ? '☀️' : '🌙';
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        updateChartColors();
+        updateUI(); // Полностью пересоздаём график
     });
 
-    // Усовершенствованный расчет электромагнитной силы с учетом сердечника
+    // Усовершенствованный расчет электромагнитной силы
     function calculateMagneticForce(params) {
         const { turns, poleAreaM2, coreLengthM, corePermeability, current, airGapM } = params;
         
@@ -176,8 +179,32 @@ document.addEventListener('DOMContentLoaded', function() {
         return initialSpringForce + springStiffness * compressionMM;
     }
 
+    // Сохранение состояния
+    function saveState() {
+        const state = {};
+        Object.keys(dom.inputs).forEach(key => {
+            state[key] = dom.inputs[key].value;
+        });
+        localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(state));
+    }
+
+    // Загрузка состояния
+    function loadState() {
+        const savedState = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY));
+        if (savedState) {
+            Object.keys(dom.inputs).forEach(key => {
+                if (savedState[key] !== undefined) {
+                    dom.inputs[key].value = savedState[key];
+                }
+            });
+        }
+    }
+
     // Основная функция обновления интерфейса
     function updateUI() {
+        // Сохраняем состояние перед обновлением
+        saveState();
+        
         // Обновление отображаемых значений
         dom.displays.currentValue.textContent = dom.inputs.current.value + ' А';
         dom.displays.maxAirGapValue.textContent = dom.inputs.maxAirGap.value + ' мм';
@@ -218,7 +245,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             const F_spring = calculateSpringForce({
-                ...params,
+                initialSpringForce: params.initialSpringForce,
+                springStiffness: params.springStiffness,
                 compressionMM
             });
             
@@ -242,7 +270,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Обновление графика
+        // Полностью пересоздаём график с новыми данными
+        initChart();
         chart.data.datasets[0].data = magneticData;
         chart.data.datasets[1].data = springData;
         chart.update();
@@ -269,6 +298,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Инициализация приложения
     function initApp() {
         initTheme();
+        loadState(); // Загружаем сохраненные данные
+        initChart(); // Инициализируем график
         setupEventListeners();
         updateUI();
     }
