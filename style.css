@@ -219,3 +219,33 @@ body:not(.dark-theme) .chartjs-render-monitor .electromagnet-line {
 body.dark-theme .chartjs-render-monitor text {
     fill: #ffffff !important;
 }
+/* Принудительное обновление цветов в тёмной теме */
+body.dark-theme .chartjs-render-monitor,
+body.dark-theme .chartjs-render-monitor * {
+    color: #ffffff !important;
+}
+
+/* Жёлтый для линии электромагнита в тёмной теме */
+body.dark-theme .electromagnet-line {
+    stroke: #ffcc00 !important;
+}
+
+/* Синий для линии электромагнита в светлой теме */
+body:not(.dark-theme) .electromagnet-line {
+    stroke: #0d6efd !important;
+}
+
+/* Красный для линии пружины */
+.spring-line {
+    stroke: #dc3545 !important;
+}
+
+/* Белый текст для всех элементов в тёмной теме */
+body.dark-theme,
+body.dark-theme .section,
+body.dark-theme .result-item,
+body.dark-theme .input-group label,
+body.dark-theme .result-item strong,
+body.dark-theme .result-item span {
+    color: #ffffff !important;
+}

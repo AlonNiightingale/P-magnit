@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Калькулятор ЭМ расцепителя</title>
     <link rel="stylesheet" href="style.css">
+    <script>
+    // Принудительная установка темы перед загрузкой контента
+    document.addEventListener('DOMContentLoaded', function() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.body.classList.toggle('dark-theme', savedTheme === 'dark');
+    });
+  </script>
 </head>
 <body>
     <header class="app-header">

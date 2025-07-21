@@ -42,33 +42,39 @@ document.addEventListener('DOMContentLoaded', function() {
     // Инициализация графика
     let chart;
     function initChart() {
-        // Удаляем старый график, если он существует
+        const isDark = document.body.classList.contains('dark-theme');
+        const electromagnetColor = isDark ? '#ffcc00' : '#0d6efd';
+        const springColor = '#dc3545';
+        
         if (chart) {
             chart.destroy();
         }
         
-        const ctx = dom.chartCanvas.getContext('2d');
-        chart = new Chart(ctx, {
+        chart = new Chart(dom.chartCanvas, {
             type: 'line',
             data: {
                 datasets: [
                     {
                         label: 'Электромагнитное усилие',
-                        borderColor: '#0d6efd',
-                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        borderColor: electromagnetColor,
+                        backgroundColor: 'transparent',
                         tension: 0.2,
                         fill: false,
                         data: [],
-                        className: 'electromagnet-line'
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        class: 'electromagnet-line'
                     },
                     {
                         label: 'Усилие пружины',
-                        borderColor: '#dc3545',
-                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        borderColor: springColor,
+                        backgroundColor: 'transparent',
                         tension: 0.2,
                         fill: false,
                         data: [],
-                        className: 'spring-line'
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        class: 'spring-line'
                     }
                 ]
             },
@@ -82,39 +88,39 @@ document.addEventListener('DOMContentLoaded', function() {
                         title: {
                             display: true,
                             text: 'Воздушный зазор (мм)',
-                            color: 'var(--text-secondary)'
+                            color: isDark ? '#ffffff' : '#6c757d'
                         },
                         reverse: true,
                         min: 0,
                         ticks: {
-                            color: 'var(--text-secondary)',
+                            color: isDark ? '#ffffff' : '#6c757d',
                             stepSize: 1
                         },
                         grid: {
-                            color: 'var(--border-color)'
+                            color: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
                         }
                     },
                     y: {
                         title: {
                             display: true,
                             text: 'Усилие (Н)',
-                            color: 'var(--text-secondary)'
+                            color: isDark ? '#ffffff' : '#6c757d'
                         },
                         min: 0,
                         max: CONFIG.CHART_CONFIG.MAX_FORCE,
                         ticks: {
-                            color: 'var(--text-secondary)',
+                            color: isDark ? '#ffffff' : '#6c757d',
                             stepSize: 100
                         },
                         grid: {
-                            color: 'var(--border-color)'
+                            color: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
                         }
                     }
                 },
                 plugins: {
                     legend: {
                         labels: {
-                            color: 'var(--text-primary)',
+                            color: isDark ? '#ffffff' : '#212529',
                             font: {
                                 size: 14
                             }
@@ -137,6 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const savedTheme = localStorage.getItem('theme') || 'light';
         document.body.classList.toggle('dark-theme', savedTheme === 'dark');
         dom.themeSwitcher.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+        initChart(); // Инициализируем график с правильными цветами
     }
 
     // Переключение темы
@@ -144,7 +151,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const isDark = document.body.classList.toggle('dark-theme');
         dom.themeSwitcher.textContent = isDark ? '☀️' : '🌙';
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        updateUI(); // Полностью пересоздаём график
+        initChart(); // Пересоздаём график с новыми цветами
+        updateUI(); // Обновляем данные
     });
 
     // Усовершенствованный расчет электромагнитной силы
@@ -250,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 compressionMM
             });
             
-            // Добавление точек с ограничением по MAX_FORCE
+            // Добавление точек
             magneticData.push({
                 x: gapMM,
                 y: Math.min(F_magnetic, CONFIG.CHART_CONFIG.MAX_FORCE)
@@ -270,11 +278,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Полностью пересоздаём график с новыми данными
-        initChart();
-        chart.data.datasets[0].data = magneticData;
-        chart.data.datasets[1].data = springData;
-        chart.update();
+        // Обновление графика
+        if (chart) {
+            chart.data.datasets[0].data = magneticData;
+            chart.data.datasets[1].data = springData;
+            chart.update();
+        }
 
         // Обновление результатов анализа
         if (tripPoint) {
@@ -298,8 +307,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Инициализация приложения
     function initApp() {
         initTheme();
-        loadState(); // Загружаем сохраненные данные
-        initChart(); // Инициализируем график
+        loadState();
         setupEventListeners();
         updateUI();
     }
