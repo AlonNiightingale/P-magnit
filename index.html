@@ -3,94 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Калькулятор ЭМ расцепителя</title>
-    <link rel="icon" href="scr/magnit.png">
+    <title>Калькулятор Электромагнита Расцепителя КЗ</title>
     <link rel="stylesheet" href="style.css">
-    <script>
-    // Принудительная установка темы перед загрузкой контента
-    document.addEventListener('DOMContentLoaded', function() {
-      const savedTheme = localStorage.getItem('theme') || 'light';
-      document.body.classList.toggle('dark-theme', savedTheme === 'dark');
-    });
-  </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <header class="app-header">
-        <h1>Анализ электромагнитного расцепителя</h1>
-        <button id="theme-switcher" class="theme-switcher">🌙</button>
-    </header>
+    <div class="container">
+        <h1>Калькулятор Электромагнита Расцепителя Короткого Замыкания</h1>
 
-    <main class="container">
-        <div class="main-layout">
-            <div id="inputs-container" class="section">
-                <h2>Параметры модели</h2>
-
-                <fieldset>
-                    <legend>⚙️ Параметры электромагнита</legend>
-                    <div class="input-group">
-                        <label for="turns">Количество витков (N), шт.</label>
-                        <input name="turns" type="number" id="turns" value="1" min="1">
-                    </div>
-                    <div class="input-group">
-                        <label for="poleArea">Площадь полюса (A), мм²</label>
-                        <input name="poleArea" type="number" id="poleArea" value="100" min="1">
-                    </div>
-                    <div class="input-group">
-                        <label for="coreLength">Длина сердечника (Lc), мм</label>
-                        <input name="coreLength" type="number" id="coreLength" value="50" min="1">
-                    </div>
-                    <div class="input-group">
-                        <label for="corePermeability">Проницаемость сердечника (μr)</label>
-                        <input name="corePermeability" type="number" id="corePermeability" value="2000" min="100">
-                    </div>
-                </fieldset>
-
-                <fieldset>
-                    <legend>⚡ Электрические параметры</legend>
-                    <div class="input-group">
-                        <label for="current">Расчетный ток (I), А <span class="value-display" id="currentValue">2500 А</span></label>
-                        <input name="current" type="range" id="current" min="100" max="10000" step="50" value="2500">
-                    </div>
-                </fieldset>
-
-                <fieldset>
-                    <legend>🔬 Параметры пружины и зазора</legend>
-                    <div class="input-group">
-                        <label for="maxAirGap">Воздушный зазор (g), мм <span class="value-display" id="maxAirGapValue">5 мм</span></label>
-                        <input name="maxAirGap" type="range" id="maxAirGap" min="0.1" max="10" step="0.1" value="5">
-                    </div>
-                    <div class="input-group">
-                        <label for="initialSpringForce">Начальное усилие пружины (F), Н</label>
-                        <input name="initialSpringForce" type="number" id="initialSpringForce" value="10" min="0" step="0.5">
-                    </div>
-                    <div class="input-group">
-                        <label for="springStiffness">Жесткость пружины (k), Н/мм</label>
-                        <input name="springStiffness" type="number" id="springStiffness" value="8" min="0" step="0.1">
-                    </div>
-                </fieldset>
+        <div class="section">
+            <h2>Расчет силы притяжения электромагнита</h2>
+            <div class="input-group">
+                <label for="ikzInput">Ток короткого замыкания ($I_{КЗ}$), А:</label>
+                <input type="number" id="ikzInput" value="8000">
+            </div>
+            <div class="input-group">
+                <label for="nInput">Количество витков обмотки ($N$), шт:</label>
+                <input type="number" id="nInput" value="5">
+            </div>
+            <div class="input-group">
+                <label for="muInput">Относительная магнитная проницаемость сердечника ($\mu_r$):</label>
+                <input type="number" id="muInput" value="1000">
+            </div>
+            <div class="input-group">
+                <label for="lCoreInput">Длина средней силовой линии сердечника ($l_{серд}$), м:</label>
+                <input type="number" id="lCoreInput" value="0.1">
+            </div>
+            <div class="input-group">
+                <label for="lAirGapInput">Длина воздушного зазора ($l_{возд}$), м (в отключенном состоянии):</label>
+                <input type="number" id="lAirGapInput" value="0.002">
+            </div>
+            <div class="input-group">
+                <label for="sAreaInput">Площадь поперечного сечения сердечника ($S$), м²:</label>
+                <input type="number" id="sAreaInput" value="0.0005">
+            </div>
+            <button onclick="calculateForce()">Рассчитать силу</button>
+            <div class="result-group">
+                <p><strong>Магнитодвижущая сила (МДС):</strong> <span id="outputMmf"></span> А·вит</p>
+                <p><strong>Общее магнитное сопротивление:</strong> <span id="outputTotalReluctance"></span> А·вит/Вб</p>
+                <p><strong>Магнитный поток:</strong> <span id="outputFlux"></span> Вб</p>
+                <p><strong>Магнитная индукция:</strong> <span id="outputInduction"></span> Тл</p>
+                <p><strong>Сила притяжения:</strong> <span id="outputForce"></span> Н</p>
             </div>
 
-            <div class="section">
-                <h2>Анализ срабатывания</h2>
-                <div id="force-gap-chart-container">
-                    <canvas id="force-gap-chart"></canvas>
-                </div>
-               
-                <div id="results-summary" class="results-summary">
-                    <div class="result-item">
-                        <strong>Расчетная точка срабатывания:</strong>
-                        <span id="trip-point-result">Нет</span>
-                    </div>
-                    <div class="result-item">
-                        <strong>Прогноз:</strong>
-                        <span id="final-decision">...</span>
-                    </div>
-                </div>
+            <div class="chart-container">
+                <h3>Сила притяжения vs. Воздушный зазор</h3>
+                <canvas id="forceAirGapChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Сила притяжения vs. Ток</h3>
+                <canvas id="forceCurrentChart"></canvas>
             </div>
         </div>
-    </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <div class="section">
+            <h2>Оценка нагрева обмотки</h2>
+            <div class="input-group">
+                <label for="ikzHeatInput">Ток короткого замыкания ($I_{КЗ}$), А:</label>
+                <input type="number" id="ikzHeatInput" value="8000">
+            </div>
+            <div class="input-group">
+                <label for="tkzHeatInput">Время действия тока КЗ ($t_{КЗ}$), с:</label>
+                <input type="number" id="tkzHeatInput" value="0.03">
+            </div>
+            <div class="input-group">
+                <label for="windingResistInput">Сопротивление обмотки ($R_{обм}$), Ом:</label>
+                <input type="number" id="windingResistInput" value="0.0001">
+            </div>
+            <div class="input-group">
+                <label for="windingMassInput">Масса проводника обмотки ($m_{обм}$), кг:</label>
+                <input type="number" id="windingMassInput" value="0.05">
+            </div>
+            <div class="input-group">
+                <label for="cpCopperInput">Удельная теплоемкость меди ($C_{p_{медь}}$), Дж/(кг·К):</label>
+                <input type="number" id="cpCopperInput" value="385">
+            </div>
+            <button onclick="calculateWindingHeat()">Рассчитать нагрев</button>
+            <div class="result-group">
+                <p><strong>Выделенное тепло в обмотке:</strong> <span id="outputWindingHeat"></span> Дж</p>
+                <p><strong>Прирост температуры обмотки:</strong> <span id="outputWindingTemp"></span> °C</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Оценка потерь на вихревые токи и нагрева сердечника (упрощенно)</h2>
+            <div class="input-group">
+                <label for="bMaxHeatInput">Максимальная магнитная индукция ($B_{max}$), Тл:</label>
+                <input type="number" id="bMaxHeatInput" value="2.0">
+            </div>
+            <div class="input-group">
+                <label for="fEffInput">Эффективная частота ($f_{эфф}$), Гц (для оценки):</label>
+                <input type="number" id="fEffInput" value="100">
+            </div>
+            <div class="input-group">
+                <label for="dEffInput">Эффективная толщина сердечника ($d_{эфф}$), м:</label>
+                <input type="number" id="dEffInput" value="0.0021">
+            </div>
+            <div class="input-group">
+                <label for="rhoSteelInput">Удельное электрическое сопротивление стали ($\rho_{сталь}$), Ом·м:</label>
+                <input type="number" id="rhoSteelInput" value="2.0e-7">
+            </div>
+            <div class="input-group">
+                <label for="coreVolumeInput">Объем сердечника ($V_{серд}$), м³:</label>
+                <input type="number" id="coreVolumeInput" value="0.00005">
+            </div>
+            <div class="input-group">
+                <label for="tkzCoreHeatInput">Время действия тока КЗ ($t_{КЗ}$), с:</label>
+                <input type="number" id="tkzCoreHeatInput" value="0.03">
+            </div>
+            <div class="input-group">
+                <label for="densitySteelInput">Плотность стали ($\rho_{сталь\_масса}$), кг/м³:</label>
+                <input type="number" id="densitySteelInput" value="7850">
+            </div>
+            <div class="input-group">
+                <label for="cpSteelInput">Удельная теплоемкость стали ($C_{p_{сталь}}$), Дж/(кг·К):</label>
+                <input type="number" id="cpSteelInput" value="460">
+            </div>
+            <button onclick="calculateCoreHeat()">Рассчитать нагрев</button>
+            <div class="result-group">
+                <p><strong>Мощность потерь на вихревые токи:</strong> <span id="outputEddyPower"></span> Вт</p>
+                <p><strong>Выделенное тепло в сердечнике:</strong> <span id="outputCoreHeat"></span> Дж</p>
+                <p><strong>Прирост температуры сердечника:</strong> <span id="outputCoreTemp"></span> °C</p>
+            </div>
+            <div class="chart-container">
+                <h3>Концептуальный рост температуры сердечника со временем</h3>
+                <canvas id="coreTempTimeChart"></canvas>
+            </div>
+        </div>
+
+        <footer>
+            <p>Примечание: Данный калькулятор предоставляет упрощенные расчеты для оценки. Для точного проектирования требуются более сложные методы (например, МКЭ) и учет нелинейных характеристик материалов.</p>
+        </footer>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>

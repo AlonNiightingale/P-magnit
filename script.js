@@ -1,317 +1,337 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Конфигурация приложения
-    const CONFIG = {
-        PHYSICS: {
-            MU_0: 4 * Math.PI * 1e-7, // Магнитная постоянная (Гн/м)
-        },
-        CONVERSION: {
-            MM_TO_M: 1e-3,
-            MM2_TO_M2: 1e-6,
-        },
-        CHART_CONFIG: {
-            GRAPH_POINTS: 100,
-            MAX_FORCE: 1000
-        },
-        STORAGE_KEY: 'em_calculator_state'
-    };
+// --- Global Chart Instances ---
+let forceAirGapChart;
+let forceCurrentChart;
+let coreTempTimeChart;
 
-    // Получение элементов DOM
-    const dom = {
-        themeSwitcher: document.getElementById('theme-switcher'),
-        inputs: {
-            turns: document.getElementById('turns'),
-            poleArea: document.getElementById('poleArea'),
-            coreLength: document.getElementById('coreLength'),
-            corePermeability: document.getElementById('corePermeability'),
-            current: document.getElementById('current'),
-            maxAirGap: document.getElementById('maxAirGap'),
-            initialSpringForce: document.getElementById('initialSpringForce'),
-            springStiffness: document.getElementById('springStiffness')
-        },
-        displays: {
-            currentValue: document.getElementById('currentValue'),
-            maxAirGapValue: document.getElementById('maxAirGapValue')
-        },
-        outputs: {
-            tripPoint: document.getElementById('trip-point-result'),
-            finalDecision: document.getElementById('final-decision')
-        },
-        chartCanvas: document.getElementById('force-gap-chart')
-    };
+// --- Constants ---
+const MU_0 = 4 * Math.PI * 1e-7; // Магнитная проницаемость вакуума (Гн/м)
+const CP_COPPER = 385;           // Удельная теплоемкость меди (Дж/(кг·К))
 
-    // Инициализация графика
-    let chart;
-    function initChart() {
-        const isDark = document.body.classList.contains('dark-theme');
-        const electromagnetColor = isDark ? '#ffcc00' : '#0d6efd';
-        const springColor = '#dc3545';
-        
-        if (chart) {
-            chart.destroy();
-        }
-        
-        chart = new Chart(dom.chartCanvas, {
-            type: 'line',
-            data: {
-                datasets: [
-                    {
-                        label: 'Электромагнитное усилие',
-                        borderColor: electromagnetColor,
-                        backgroundColor: 'transparent',
-                        tension: 0.2,
-                        fill: false,
-                        data: [],
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        class: 'electromagnet-line'
-                    },
-                    {
-                        label: 'Усилие пружины',
-                        borderColor: springColor,
-                        backgroundColor: 'transparent',
-                        tension: 0.2,
-                        fill: false,
-                        data: [],
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        class: 'spring-line'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        type: 'linear',
-                        position: 'bottom',
-                        title: {
-                            display: true,
-                            text: 'Воздушный зазор (мм)',
-                            color: isDark ? '#ffffff' : '#6c757d'
-                        },
-                        reverse: true,
-                        min: 0,
-                        ticks: {
-                            color: isDark ? '#ffffff' : '#6c757d',
-                            stepSize: 1
-                        },
-                        grid: {
-                            color: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Усилие (Н)',
-                            color: isDark ? '#ffffff' : '#6c757d'
-                        },
-                        min: 0,
-                        max: CONFIG.CHART_CONFIG.MAX_FORCE,
-                        ticks: {
-                            color: isDark ? '#ffffff' : '#6c757d',
-                            stepSize: 100
-                        },
-                        grid: {
-                            color: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
-                        }
+// --- Helper function to calculate Force ---
+// This function is extracted to be reusable for chart data generation
+function calculateForceValue(current_ikz, current_N, current_mu_r, current_l_core, current_l_airGap, current_S) {
+    const mu_core = current_mu_r * MU_0;
+    const mmf = current_N * current_ikz;
+    const reluctance_core = current_l_core / (mu_core * current_S);
+    const reluctance_airGap = current_l_airGap / (MU_0 * current_S);
+    const total_reluctance = reluctance_core + reluctance_airGap;
+    
+    // Avoid division by zero if reluctance is extremely small
+    if (total_reluctance === 0) return 0;
+
+    const flux = mmf / total_reluctance;
+    const induction = flux / current_S;
+    const force = (induction * induction * current_S) / (2 * MU_0);
+    return force;
+}
+
+// --- Main calculation for Force & Chart Updates ---
+function calculateForce() {
+    // Input data
+    const ikz = parseFloat(document.getElementById('ikzInput').value);
+    const N = parseFloat(document.getElementById('nInput').value);
+    const mu_r = parseFloat(document.getElementById('muInput').value);
+    const l_core = parseFloat(document.getElementById('lCoreInput').value);
+    const l_airGap = parseFloat(document.getElementById('lAirGapInput').value);
+    const S = parseFloat(document.getElementById('sAreaInput').value);
+
+    // Validation
+    if (isNaN(ikz) || isNaN(N) || isNaN(mu_r) || isNaN(l_core) || isNaN(l_airGap) || isNaN(S) || ikz <= 0 || N <= 0 || mu_r <= 0 || l_core <= 0 || l_airGap < 0 || S <= 0) {
+        alert('Пожалуйста, введите корректные положительные числовые значения для всех параметров.');
+        return;
+    }
+
+    const mu_core = mu_r * MU_0;
+    const mmf = N * ikz;
+
+    const reluctance_core = l_core / (mu_core * S);
+    const reluctance_airGap = l_airGap / (MU_0 * S);
+    const total_reluctance = reluctance_core + reluctance_airGap;
+    
+    let flux = 0;
+    let induction = 0;
+    let force = 0;
+
+    if (total_reluctance !== 0) { // Avoid division by zero
+        flux = mmf / total_reluctance;
+        induction = flux / S;
+        force = (induction * induction * S) / (2 * MU_0);
+    }
+    
+
+    // Output results
+    document.getElementById('outputMmf').textContent = mmf.toFixed(2);
+    document.getElementById('outputTotalReluctance').textContent = total_reluctance.toExponential(2);
+    document.getElementById('outputFlux').textContent = flux.toExponential(2);
+    document.getElementById('outputInduction').textContent = induction.toFixed(3);
+    document.getElementById('outputForce').textContent = force.toFixed(2);
+
+    // --- Update Charts ---
+    updateForceAirGapChart(ikz, N, mu_r, l_core, S);
+    updateForceCurrentChart(N, mu_r, l_core, l_airGap, S);
+}
+
+// --- Update Force vs. Air Gap Chart ---
+function updateForceAirGapChart(ikz, N, mu_r, l_core, S) {
+    const airGapValues = [];
+    const forceValues = [];
+    const maxAirGap = 0.005; // Max air gap for the plot, e.g., 5 mm
+    const steps = 50;
+
+    for (let i = 0; i <= steps; i++) {
+        const currentAirGap = (i / steps) * maxAirGap;
+        airGapValues.push(currentAirGap * 1000); // Convert to mm for label
+        const force = calculateForceValue(ikz, N, mu_r, l_core, currentAirGap, S);
+        forceValues.push(force);
+    }
+
+    const ctx = document.getElementById('forceAirGapChart').getContext('2d');
+    if (forceAirGapChart) {
+        forceAirGapChart.destroy(); // Destroy previous chart instance
+    }
+    forceAirGapChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: airGapValues.map(val => val.toFixed(1)), // Labels in mm
+            datasets: [{
+                label: 'Сила притяжения (Н)',
+                data: forceValues,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Воздушный зазор (мм)'
                     }
                 },
-                plugins: {
-                    legend: {
-                        labels: {
-                            color: isDark ? '#ffffff' : '#212529',
-                            font: {
-                                size: 14
-                            }
-                        }
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Сила притяжения (Н)'
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.dataset.label}: ${context.parsed.y.toFixed(1)} Н @ ${context.parsed.x.toFixed(2)} мм`;
-                            }
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return `Зазор: ${context[0].label} мм`;
+                        },
+                        label: function(context) {
+                            return `Сила: ${context.parsed.y.toFixed(2)} Н`;
                         }
                     }
                 }
             }
-        });
-    }
-
-    // Инициализация темы
-    function initTheme() {
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        document.body.classList.toggle('dark-theme', savedTheme === 'dark');
-        dom.themeSwitcher.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
-        initChart(); // Инициализируем график с правильными цветами
-    }
-
-    // Переключение темы
-    dom.themeSwitcher.addEventListener('click', () => {
-        const isDark = document.body.classList.toggle('dark-theme');
-        dom.themeSwitcher.textContent = isDark ? '☀️' : '🌙';
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        initChart(); // Пересоздаём график с новыми цветами
-        updateUI(); // Обновляем данные
-    });
-
-    // Усовершенствованный расчет электромагнитной силы
-    function calculateMagneticForce(params) {
-        const { turns, poleAreaM2, coreLengthM, corePermeability, current, airGapM } = params;
-        
-        // Расчет магнитодвижущей силы (МДС)
-        const mmf = turns * current;
-        
-        // Расчет магнитного сопротивления воздушного зазора
-        const reluctanceGap = airGapM / (CONFIG.PHYSICS.MU_0 * poleAreaM2);
-        
-        // Расчет магнитного сопротивления сердечника
-        const reluctanceCore = coreLengthM / (CONFIG.PHYSICS.MU_0 * corePermeability * poleAreaM2);
-        
-        // Общее магнитное сопротивление
-        const totalReluctance = reluctanceGap + reluctanceCore;
-        
-        // Магнитный поток
-        const magneticFlux = mmf / totalReluctance;
-        
-        // Магнитная индукция
-        const fluxDensity = magneticFlux / poleAreaM2;
-        
-        // Электромагнитное усилие (формула Максвелла)
-        return (Math.pow(fluxDensity, 2) * poleAreaM2) / (2 * CONFIG.PHYSICS.MU_0);
-    }
-
-    // Расчет усилия пружины
-    function calculateSpringForce(params) {
-        const { initialSpringForce, springStiffness, compressionMM } = params;
-        return initialSpringForce + springStiffness * compressionMM;
-    }
-
-    // Сохранение состояния
-    function saveState() {
-        const state = {};
-        Object.keys(dom.inputs).forEach(key => {
-            state[key] = dom.inputs[key].value;
-        });
-        localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(state));
-    }
-
-    // Загрузка состояния
-    function loadState() {
-        const savedState = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY));
-        if (savedState) {
-            Object.keys(dom.inputs).forEach(key => {
-                if (savedState[key] !== undefined) {
-                    dom.inputs[key].value = savedState[key];
-                }
-            });
         }
+    });
+}
+
+// --- Update Force vs. Current Chart ---
+function updateForceCurrentChart(N, mu_r, l_core, l_airGap, S) {
+    const currentValues = [];
+    const forceValues = [];
+    const maxCurrent = 10000; // Max current for the plot, e.g., 10000 A
+    const steps = 50;
+
+    for (let i = 0; i <= steps; i++) {
+        const current_ikz = (i / steps) * maxCurrent;
+        currentValues.push(current_ikz);
+        const force = calculateForceValue(current_ikz, N, mu_r, l_core, l_airGap, S);
+        forceValues.push(force);
     }
 
-    // Основная функция обновления интерфейса
-    function updateUI() {
-        // Сохраняем состояние перед обновлением
-        saveState();
-        
-        // Обновление отображаемых значений
-        dom.displays.currentValue.textContent = dom.inputs.current.value + ' А';
-        dom.displays.maxAirGapValue.textContent = dom.inputs.maxAirGap.value + ' мм';
-        
-        // Сбор параметров
-        const params = {
-            turns: parseInt(dom.inputs.turns.value) || 1,
-            poleAreaM2: (parseFloat(dom.inputs.poleArea.value) || 100) * CONFIG.CONVERSION.MM2_TO_M2,
-            coreLengthM: (parseFloat(dom.inputs.coreLength.value) || 50) * CONFIG.CONVERSION.MM_TO_M,
-            corePermeability: parseFloat(dom.inputs.corePermeability.value) || 2000,
-            current: parseFloat(dom.inputs.current.value) || 2500,
-            maxAirGap: parseFloat(dom.inputs.maxAirGap.value) || 5,
-            initialSpringForce: parseFloat(dom.inputs.initialSpringForce.value) || 10,
-            springStiffness: parseFloat(dom.inputs.springStiffness.value) || 8
-        };
-
-        // Подготовка данных для графика
-        const magneticData = [];
-        const springData = [];
-        let tripPoint = null;
-
-        const points = CONFIG.CHART_CONFIG.GRAPH_POINTS;
-        const minGap = 0.1; // минимальный зазор 0.1 мм
-        const maxGap = params.maxAirGap;
-        
-        // Создаем точки от максимального зазора к минимальному
-        for (let i = 0; i <= points; i++) {
-            // Рассчитываем текущий зазор (от max к min)
-            const gapMM = maxGap - (maxGap - minGap) * (i / points);
-            
-            // Сжатие пружины (разница между максимальным и текущим зазором)
-            const compressionMM = maxGap - gapMM;
-            
-            // Расчет сил
-            const F_magnetic = calculateMagneticForce({
-                ...params,
-                airGapM: gapMM * CONFIG.CONVERSION.MM_TO_M
-            });
-            
-            const F_spring = calculateSpringForce({
-                initialSpringForce: params.initialSpringForce,
-                springStiffness: params.springStiffness,
-                compressionMM
-            });
-            
-            // Добавление точек
-            magneticData.push({
-                x: gapMM,
-                y: Math.min(F_magnetic, CONFIG.CHART_CONFIG.MAX_FORCE)
-            });
-            
-            springData.push({
-                x: gapMM,
-                y: Math.min(F_spring, CONFIG.CHART_CONFIG.MAX_FORCE)
-            });
-            
-            // Поиск точки пересечения графиков
-            if (tripPoint === null && F_magnetic >= F_spring) {
-                tripPoint = {
-                    gap: gapMM.toFixed(2),
-                    force: F_magnetic.toFixed(1)
-                };
+    const ctx = document.getElementById('forceCurrentChart').getContext('2d');
+    if (forceCurrentChart) {
+        forceCurrentChart.destroy(); // Destroy previous chart instance
+    }
+    forceCurrentChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: currentValues.map(val => val.toFixed(0)), // Labels in Amps
+            datasets: [{
+                label: 'Сила притяжения (Н)',
+                data: forceValues,
+                borderColor: 'rgb(255, 99, 132)',
+                tension: 0.1,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Ток (А)'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Сила притяжения (Н)'
+                    },
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return `Ток: ${context[0].label} А`;
+                        },
+                        label: function(context) {
+                            return `Сила: ${context.parsed.y.toFixed(2)} Н`;
+                        }
+                    }
+                }
             }
         }
+    });
+}
 
-        // Обновление графика
-        if (chart) {
-            chart.data.datasets[0].data = magneticData;
-            chart.data.datasets[1].data = springData;
-            chart.update();
+
+// --- Main calculation for Winding Heat ---
+function calculateWindingHeat() {
+    // Input data
+    const ikz = parseFloat(document.getElementById('ikzHeatInput').value);
+    const tkz = parseFloat(document.getElementById('tkzHeatInput').value);
+    const windingResistance = parseFloat(document.getElementById('windingResistInput').value);
+    const windingMass = parseFloat(document.getElementById('windingMassInput').value);
+    const cpCopper = parseFloat(document.getElementById('cpCopperInput').value);
+
+    // Validation
+    if (isNaN(ikz) || isNaN(tkz) || isNaN(windingResistance) || isNaN(windingMass) || isNaN(cpCopper) || ikz <= 0 || tkz <= 0 || windingResistance < 0 || windingMass <= 0 || cpCopper <= 0) {
+        alert('Пожалуйста, введите корректные положительные числовые значения для всех параметров.');
+        return;
+    }
+
+    // Calculations
+    const heatGenerated = ikz * ikz * windingResistance * tkz;
+    const tempIncrease = heatGenerated / (windingMass * cpCopper);
+
+    // Output results
+    document.getElementById('outputWindingHeat').textContent = heatGenerated.toFixed(2);
+    document.getElementById('outputWindingTemp').textContent = tempIncrease.toFixed(2);
+}
+
+// --- Main calculation for Core Heat & Chart Update ---
+function calculateCoreHeat() {
+    // Input data
+    const bMax = parseFloat(document.getElementById('bMaxHeatInput').value);
+    const fEff = parseFloat(document.getElementById('fEffInput').value);
+    const dEff = parseFloat(document.getElementById('dEffInput').value);
+    const rhoSteel = parseFloat(document.getElementById('rhoSteelInput').value);
+    const coreVolume = parseFloat(document.getElementById('coreVolumeInput').value);
+    const tkz = parseFloat(document.getElementById('tkzCoreHeatInput').value);
+    const densitySteel = parseFloat(document.getElementById('densitySteelInput').value);
+    const cpSteel = parseFloat(document.getElementById('cpSteelInput').value);
+
+    // Validation
+    if (isNaN(bMax) || isNaN(fEff) || isNaN(dEff) || isNaN(rhoSteel) || isNaN(coreVolume) || isNaN(tkz) || isNaN(densitySteel) || isNaN(cpSteel) ||
+        bMax <= 0 || fEff <= 0 || dEff <= 0 || rhoSteel <= 0 || coreVolume <= 0 || tkz <= 0 || densitySteel <= 0 || cpSteel <= 0) {
+        alert('Пожалуйста, введите корректные положительные числовые значения для всех параметров.');
+        return;
+    }
+
+    // Calculations (simplified formula for eddy current losses)
+    const eddyCurrentPower = (Math.PI * bMax * fEff * dEff) ** 2 * coreVolume / (6 * rhoSteel);
+
+    const heatGenerated = eddyCurrentPower * tkz;
+    const coreMass = coreVolume * densitySteel;
+    const tempIncrease = heatGenerated / (coreMass * cpSteel);
+
+    // Output results
+    document.getElementById('outputEddyPower').textContent = eddyCurrentPower.toFixed(2);
+    document.getElementById('outputCoreHeat').textContent = heatGenerated.toFixed(2);
+    document.getElementById('outputCoreTemp').textContent = tempIncrease.toFixed(2);
+
+    // Update conceptual Core Temp vs Time Chart
+    updateCoreTempTimeChart(eddyCurrentPower, coreMass, cpSteel, tkz);
+}
+
+// --- Conceptual Core Temperature vs. Time Chart ---
+function updateCoreTempTimeChart(power, mass, cp, actual_tkz) {
+    const timeValues = [];
+    const tempValues = [];
+    const maxTime = actual_tkz * 5; // Plot for 5 times the actual KZ duration
+    const steps = 50;
+
+    for (let i = 0; i <= steps; i++) {
+        const currentTime = (i / steps) * maxTime;
+        timeValues.push(currentTime);
+        const currentTempRise = (power * currentTime) / (mass * cp);
+        tempValues.push(currentTempRise);
+    }
+
+    const ctx = document.getElementById('coreTempTimeChart').getContext('2d');
+    if (coreTempTimeChart) {
+        coreTempTimeChart.destroy(); // Destroy previous chart instance
+    }
+    coreTempTimeChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: timeValues.map(val => val.toFixed(3)),
+            datasets: [{
+                label: 'Прирост температуры (°C)',
+                data: tempValues,
+                borderColor: 'rgb(54, 162, 235)',
+                tension: 0.1,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Время (с)'
+                    },
+                    // Highlight the actual KZ duration
+                    afterBuildTicks: function(axis) {
+                        const ticks = axis.ticks;
+                        ticks.forEach(tick => {
+                            if (Math.abs(tick.value - actual_tkz) < (maxTime / steps / 2)) {
+                                tick.label = `${tick.label} (время КЗ)`;
+                            }
+                        });
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Прирост температуры (°C)'
+                    },
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return `Время: ${context[0].label} с`;
+                        },
+                        label: function(context) {
+                            return `Темп. прирост: ${context.parsed.y.toFixed(2)} °C`;
+                        }
+                    }
+                }
+            }
         }
+    });
+}
 
-        // Обновление результатов анализа
-        if (tripPoint) {
-            dom.outputs.tripPoint.textContent = `${tripPoint.force} Н @ ${tripPoint.gap} мм`;
-            dom.outputs.finalDecision.textContent = 'Сработает';
-            dom.outputs.finalDecision.className = 'trip';
-        } else {
-            dom.outputs.tripPoint.textContent = 'Нет пересечения';
-            dom.outputs.finalDecision.textContent = 'Не сработает';
-            dom.outputs.finalDecision.className = 'no-trip';
-        }
-    }
-
-    // Настройка обработчиков событий
-    function setupEventListeners() {
-        Object.values(dom.inputs).forEach(input => {
-            input.addEventListener('input', updateUI);
-        });
-    }
-
-    // Инициализация приложения
-    function initApp() {
-        initTheme();
-        loadState();
-        setupEventListeners();
-        updateUI();
-    }
-
-    // Запуск приложения
-    initApp();
+// --- Initial chart drawing when page loads (optional, but good practice) ---
+// You can call calculateForce() and calculateCoreHeat() once on load to populate initial charts
+document.addEventListener('DOMContentLoaded', () => {
+    calculateForce(); // To initialize the force charts
+    calculateCoreHeat(); // To initialize the core heat chart
 });

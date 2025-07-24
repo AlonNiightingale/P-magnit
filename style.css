@@ -1,251 +1,127 @@
-/* --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ДЛЯ ТЕМ --- */
-:root {
-    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    --transition-speed: 0.3s;
-    
-    /* Светлая тема (по умолчанию) */
-    --bg-primary: #f0f2f5;
-    --bg-secondary: #ffffff;
-    --text-primary: #212529;
-    --text-secondary: #6c757d;
-    --border-color: #dee2e6;
-    --accent-primary: #0d6efd;
-    --accent-success: #198754;
-    --accent-danger: #dc3545;
-    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-body.dark-theme {
-    /* Темная тема */
-    --bg-primary: #121212;
-    --bg-secondary: #1e1e1e;
-    --text-primary: #e0e0e0;
-    --text-secondary: #a0a0a0;
-    --border-color: #444444;
-    --accent-primary: #4dabf7;
-    --accent-success: #40c057;
-    --accent-danger: #ff6b6b;
-    --shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
 body {
-    font-family: var(--font-family);
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f7f6;
+    color: #333;
     margin: 0;
     padding: 20px;
-    transition: background-color var(--transition-speed), color var(--transition-speed);
-}
-.container { 
-    max-width: 1400px; 
-    width: 100%; 
-    margin: 0 auto; 
-}
-
-/* --- ХЭДЕР И ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ --- */
-.app-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid var(--accent-primary);
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+.container {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    max-width: 900px;
+    width: 100%;
+}
+
+h1 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 30px;
+    font-size: 1.8em;
+}
+
+h2 {
+    color: #34495e;
+    border-bottom: 2px solid #e0e0e0;
     padding-bottom: 10px;
+    margin-top: 30px;
     margin-bottom: 20px;
-}
-.theme-switcher {
-    font-size: 1.5rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-primary);
-    transition: transform var(--transition-speed);
-}
-.theme-switcher:hover { 
-    transform: scale(1.1) rotate(10deg); 
+    font-size: 1.4em;
 }
 
-/* --- ОБЩАЯ СТРУКТУРА И СЕКЦИИ --- */
-.main-layout {
-    display: grid;
-    grid-template-columns: 450px 1fr;
-    gap: 20px;
-}
-@media (max-width: 1200px) { 
-    .main-layout { 
-        grid-template-columns: 1fr; 
-    } 
-}
 .section {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    margin-bottom: 40px;
     padding: 20px;
-    box-shadow: var(--shadow);
-    transition: background-color var(--transition-speed), border-color var(--transition-speed);
-}
-fieldset {
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    margin-bottom: 20px;
-    padding: 15px;
-}
-legend {
-    font-weight: bold;
-    color: var(--accent-primary);
-    padding: 0 10px;
+    background-color: #fcfcfc;
+    border-radius: 8px;
+    border: 1px solid #eee;
 }
 
-/* --- ПОЛЯ ВВОДА --- */
 .input-group {
     margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
 }
+
 .input-group label {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    font-weight: 500;
-}
-.input-group .value-display { 
-    font-weight: bold; 
-    color: var(--accent-primary); 
-    margin-left: 10px;
-}
-.input-group input {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 8px;
-    border: 1px solid var(--border-color);
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
-    border-radius: 4px;
-    transition: background-color var(--transition-speed), border-color var(--transition-speed);
-}
-.input-group input[type="range"] { 
-    padding: 0; 
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #555;
+    font-size: 0.95em;
 }
 
-/* --- РЕЗУЛЬТАТЫ --- */
-.results-summary { 
-    margin-top: 20px; 
-}
-.result-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
+.input-group input[type="number"] {
+    padding: 10px 12px;
+    border: 1px solid #ccc;
     border-radius: 5px;
-    margin-bottom: 10px;
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
-}
-.result-item strong { 
-    margin-right: 15px; 
-}
-.result-item span {
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 1.2em;
-    font-weight: bold;
-}
-#final-decision.trip { 
-    color: var(--accent-danger); 
-}
-#final-decision.no-trip { 
-    color: var(--accent-success); 
-}
-#trip-point-result { 
-    color: var(--accent-primary); 
+    font-size: 1em;
+    width: calc(100% - 24px); /* Учитываем padding */
+    box-sizing: border-box; /* Важно для корректного расчета ширины */
 }
 
-/* --- ГРАФИК --- */
-#force-gap-chart-container {
+button {
+    background-color: #007bff;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.1em;
+    margin-top: 10px;
+    transition: background-color 0.3s ease;
     width: 100%;
-    height: 400px;
-    background-color: var(--bg-secondary);
-    border-radius: 8px;
-    padding: 15px;
-    box-sizing: border-box;
-}
-@media (max-width: 768px) {
-    #force-gap-chart-container {
-        height: 300px;
-    }
-    .input-group label {
-        flex-direction: column;
-    }
-    .input-group .value-display {
-        margin-top: 5px;
-        margin-left: 0;
-    }
-}
-/* Улучшения для тёмной темы */
-body.dark-theme .result-item,
-body.dark-theme .input-group label,
-body.dark-theme .result-item strong {
-    color: #ffffff !important;
 }
 
-/* Жёлтый цвет для линии электромагнита */
-.chartjs-render-monitor {
-    --electromagnet-color: #0d6efd;
-    --spring-color: #dc3545;
+button:hover {
+    background-color: #0056b3;
 }
 
-body.dark-theme .chartjs-render-monitor {
-    --electromagnet-color: #ffcc00;
-    --spring-color: #ff6b6b;
-}
-/* Явное указание цветов для графика */
-.chartjs-render-monitor .chart-legend,
-.chartjs-render-monitor .chart-title,
-.chartjs-render-monitor .chart-axis {
-    color: var(--text-primary) !important;
+.result-group {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px dashed #ddd;
 }
 
-/* Жёлтый для линии электромагнита в тёмной теме */
-body.dark-theme .chartjs-render-monitor .electromagnet-line {
-    stroke: #ffcc00 !important;
+.result-group p {
+    margin-bottom: 8px;
+    font-size: 1.05em;
+    color: #444;
 }
 
-/* Синий для линии электромагнита в светлой теме */
-body:not(.dark-theme) .chartjs-render-monitor .electromagnet-line {
-    stroke: #0d6efd !important;
+.result-group p strong {
+    color: #222;
 }
 
-/* Красный для линии пружины */
-.chartjs-render-monitor .spring-line {
-    stroke: #dc3545 !important;
+footer {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 0.85em;
+    color: #777;
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+}
+/* ... (previous CSS code) ... */
+
+.chart-container {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px dashed #ddd;
+    text-align: center;
 }
 
-/* Белый текст в тёмной теме для элементов графика */
-body.dark-theme .chartjs-render-monitor text {
-    fill: #ffffff !important;
-}
-/* Принудительное обновление цветов в тёмной теме */
-body.dark-theme .chartjs-render-monitor,
-body.dark-theme .chartjs-render-monitor * {
-    color: #ffffff !important;
+.chart-container h3 {
+    margin-bottom: 15px;
+    color: #4a6980;
+    font-size: 1.2em;
 }
 
-/* Жёлтый для линии электромагнита в тёмной теме */
-body.dark-theme .electromagnet-line {
-    stroke: #ffcc00 !important;
-}
-
-/* Синий для линии электромагнита в светлой теме */
-body:not(.dark-theme) .electromagnet-line {
-    stroke: #0d6efd !important;
-}
-
-/* Красный для линии пружины */
-.spring-line {
-    stroke: #dc3545 !important;
-}
-
-/* Белый текст для всех элементов в тёмной теме */
-body.dark-theme,
-body.dark-theme .section,
-body.dark-theme .result-item,
-body.dark-theme .input-group label,
-body.dark-theme .result-item strong,
-body.dark-theme .result-item span {
-    color: #ffffff !important;
+canvas {
+    max-width: 100%;
+    height: auto; /* Ensure responsiveness */
 }
