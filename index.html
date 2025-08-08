@@ -1,88 +1,161 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Калькулятор ЭМ расцепителя</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EM Trip Calculator — инженерный калькулятор</title>
+
+  <!-- Шрифт -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <header class="app-header">
-        <h1>Анализ электромагнитного расцепителя</h1>
-        <button id="theme-switcher" class="theme-switcher">🌙</button>
-    </header>
-
-    <main class="container">
-        <div class="main-layout">
-            <div id="inputs-container" class="section">
-                <h2>Параметры модели</h2>
-
-                <fieldset>
-                    <legend>⚙️ Параметры электромагнита</legend>
-                    <div class="input-group">
-                        <label for="turns">Количество витков (N), шт.</label>
-                        <input name="turns" type="number" id="turns" value="1" min="1">
-                    </div>
-                    <div class="input-group">
-                        <label for="poleArea">Площадь полюса (A), мм²</label>
-                        <input name="poleArea" type="number" id="poleArea" value="100" min="1">
-                    </div>
-                    <div class="input-group">
-                        <label for="coreLength">Длина сердечника (Lc), мм</label>
-                        <input name="coreLength" type="number" id="coreLength" value="50" min="1">
-                    </div>
-                    <div class="input-group">
-                        <label for="corePermeability">Проницаемость сердечника (μr)</label>
-                        <input name="corePermeability" type="number" id="corePermeability" value="2000" min="100">
-                    </div>
-                </fieldset>
-
-                <fieldset>
-                    <legend>⚡ Электрические параметры</legend>
-                    <div class="input-group">
-                        <label for="current">Расчетный ток (I), А <span class="value-display" id="currentValue">2500 А</span></label>
-                        <input name="current" type="range" id="current" min="100" max="10000" step="50" value="2500">
-                    </div>
-                </fieldset>
-
-                <fieldset>
-                    <legend>🔬 Параметры пружины и зазора</legend>
-                    <div class="input-group">
-                        <label for="maxAirGap">Воздушный зазор (g), мм <span class="value-display" id="maxAirGapValue">5 мм</span></label>
-                        <input name="maxAirGap" type="range" id="maxAirGap" min="0.1" max="10" step="0.1" value="5">
-                    </div>
-                    <div class="input-group">
-                        <label for="initialSpringForce">Начальное усилие пружины (F), Н</label>
-                        <input name="initialSpringForce" type="number" id="initialSpringForce" value="10" min="0" step="0.5">
-                    </div>
-                    <div class="input-group">
-                        <label for="springStiffness">Жесткость пружины (k), Н/мм</label>
-                        <input name="springStiffness" type="number" id="springStiffness" value="8" min="0" step="0.1">
-                    </div>
-                </fieldset>
-            </div>
-
-            <div class="section">
-                <h2>Анализ срабатывания</h2>
-                <div id="force-gap-chart-container">
-                    <canvas id="force-gap-chart"></canvas>
-                </div>
-               
-                <div id="results-summary" class="results-summary">
-                    <div class="result-item">
-                        <strong>Расчетная точка срабатывания:</strong>
-                        <span id="trip-point-result">Нет</span>
-                    </div>
-                    <div class="result-item">
-                        <strong>Прогноз:</strong>
-                        <span id="final-decision">...</span>
-                    </div>
-                </div>
-            </div>
+  <div class="app">
+    <aside class="panel controls">
+      <div class="panel-head">
+        <h1>EM Trip Calculator</h1>
+        <div class="panel-actions">
+          <button id="themeBtn" title="Переключить тему">🌗</button>
+          <button id="helpBtn" class="ghost">❔</button>
         </div>
-    </main>
+      </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js"></script>
+      <p class="muted">Интерактивный калькулятор усилия якоря для электромагнитного расцепителя. Сравни методы и экспортируй данные.</p>
+
+      <div class="section">
+        <label>Пресеты
+          <select id="presetSelect">
+            <option value="custom">— Custom —</option>
+            <option value="soviet">Soviet-style</option>
+            <option value="modern">Modern compact</option>
+            <option value="high_gap">Large gap (test)</option>
+          </select>
+        </label>
+
+        <div class="grid-2">
+          <label data-tip="Число витков (N). Для шины обычно 1 — но у катушек может быть больше.">N
+            <input id="turns" type="number" min="1" value="1">
+          </label>
+
+          <label data-tip="Материал сердечника — влияет mu_r.">Материал
+            <select id="material">
+              <option value="steel">Электротехническая сталь (mu_r≈4000)</option>
+              <option value="iron">Мягкое железо (mu_r≈1000)</option>
+              <option value="ferrite">Феррит (mu_r≈200)</option>
+              <option value="air">Воздух (mu_r=1)</option>
+            </select>
+          </label>
+        </div>
+
+        <label data-tip="Текущий/испытательный ток (A).">Ток, A
+          <input id="iRange" type="range" min="0" max="5000" step="1" value="500">
+        </label>
+        <div class="row">
+          <input id="iNumber" type="number" min="0" max="5000" step="1" value="500" class="num">
+          <button id="autoBtn" class="ghost">Авто</button>
+        </div>
+
+        <div class="grid-2">
+          <label data-tip="Сечение шины (мм²).">Сечение, мм²
+            <input id="area" type="number" min="1" value="120">
+          </label>
+
+          <label data-tip="Зазор между сердечником и якорем (мм).">Зазор, мм
+            <input id="gap" type="number" min="0.01" step="0.01" value="0.5">
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label data-tip="Ход якоря до полного срабатывания (мм).">Ход, мм
+            <input id="stroke" type="number" min="0.1" step="0.1" value="2">
+          </label>
+
+          <label data-tip="Длина магнитного пути через сердечник (мм).">Длина пути, мм
+            <input id="coreLen" type="number" min="1" step="1" value="50">
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label data-tip="Жёсткость пружины k (Н/м).">k, Н/м
+            <input id="k" type="number" min="1" step="100" value="25000">
+          </label>
+
+          <label data-tip="Преднатяг пружины (Н).">Преднатяг, Н
+            <input id="preload" type="number" min="0" step="1" value="80">
+          </label>
+        </div>
+
+        <div class="controls-row">
+          <button id="calcBtn">Рассчитать</button>
+          <button id="exportCsv" class="ghost">Экспорт CSV</button>
+          <button id="exportPng" class="ghost">Экспорт PNG</button>
+        </div>
+
+        <div class="preset-actions">
+          <input id="presetName" placeholder="Имя пресета (для сохранения)" />
+          <button id="savePreset" class="ghost">Сохранить пресет</button>
+          <button id="loadPresets" class="ghost">Управление пресетами</button>
+        </div>
+
+      </div>
+      <div class="small muted">Начни с пресета, потом изменяй один параметр — так легче понять влияние.</div>
+    </aside>
+
+    <main class="panel main">
+      <div class="main-head">
+        <div>
+          <h2>Усилие якоря vs ток</h2>
+          <div class="muted small">Показаны 3 метода: упрощённый, энергия/маг.цепь, эмпирический. Пунктир — сила пружины.</div>
+        </div>
+        <div class="status">
+          <div>Текущий ток: <b id="iCur">500 A</b></div>
+          <div>Токи срабатывания: <b id="tripValues">— / — / — A</b></div>
+        </div>
+      </div>
+
+      <section class="chart-wrap">
+        <canvas id="forceChart"></canvas>
+      </section>
+
+      <section class="info-row">
+        <div class="card">
+          <h3>Магнитная цепь</h3>
+          <pre id="magOut">—</pre>
+        </div>
+        <div class="card">
+          <h3>Текущие значения</h3>
+          <pre id="valOut">—</pre>
+        </div>
+      </section>
+
+      <section class="visual card">
+        <h3>Схема</h3>
+        <svg id="vis" viewBox="0 0 800 160" preserveAspectRatio="xMidYMid meet">
+          <rect x="20" y="20" width="760" height="120" rx="10" fill="#071427" />
+          <rect id="coreLeft" x="80" y="40" width="140" height="80" rx="6" fill="#0b1220" stroke="#0ea5a4" stroke-width="2" />
+          <rect id="gapRect" x="220" y="60" width="16" height="40" rx="4" fill="#071427" stroke="#94a3b8" stroke-dasharray="3 3" />
+          <rect id="arm" x="240" y="48" width="120" height="64" rx="6" fill="#0b1220" stroke="#e6eef6" stroke-width="1" />
+        </svg>
+      </section>
+    </main>
+  </div>
+
+  <footer class="footer">EM Trip Calculator — MIT — сделано для инженеров</footer>
+
+  <!-- Модал: Инструкция / Preset Manager -->
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modal-body">
+      <button id="modalClose" class="modal-close">✕</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <!-- Tooltip -->
+  <div id="tooltip" class="tooltip" role="tooltip"></div>
+
+  <script src="script.js"></script>
 </body>
 </html>
